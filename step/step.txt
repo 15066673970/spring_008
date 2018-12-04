@@ -1,0 +1,72 @@
+-----------------------------------spring中的事务-------------------------------
+1.事务特性：acid
+2.事务的并发问题：脏读，幻读，不可重复读
+3.事务的隔离级别：	1 	读未提交
+				2	读已提交
+				4	可重复读
+				8	串行化
+	spring封装了事务管理代码：
+					事务操作：打开事务，提交事务，回滚事务。
+					事务操作对象：因为在不同平台，操作事务的代码各不相同。spring提供了一个接口：PlantformTransactionManager接口
+						针对不同的平台提供了不同的实现类：jdbc/ibatis:	DataSourceTransactionManager
+													hibernate：	HibernateTransactionManager
+													mybatis:ManagedTransaction
+					spring管理事务的属性介绍：
+							事务的隔离级别
+							超时行为
+							是否只读
+							事务的传播行为		PROPAGION_XXX :事务的传播行为，在业务方法之间平行调用的时候如何处理事务的问题
+											* 保证同一个事务中
+											PROPAGATION_REQUIRED 支持当前事务，如果不存在 就新建一个(默认)
+											PROPAGATION_SUPPORTS 支持当前事务，如果不存在，就不使用事务
+											PROPAGATION_MANDATORY 支持当前事务，如果不存在，抛出异常
+											* 保证没有在同一个事务中
+											PROPAGATION_REQUIRES_NEW 如果有事务存在，挂起当前事务，创建一个新的事务
+											PROPAGATION_NOT_SUPPORTED 以非事务方式运行，如果有事务存在，挂起当前事务传智播客——专注于 Java、 .Net 和 Php、网页平面设计工程师的培训
+											PROPAGATION_NEVER 以非事务方式运行，如果有事务存在，抛出异常
+											PROPAGATION_NESTED 如果当前事务存在，则嵌套事务执行
+4.准备环境的搭建。
+ 	工程下的所有包（dao，service，test），2个配置文件（application.xml和db.properties），当前测试demo下不牵扯事务。
+ 	如果在AccountServiceImpl中的转账方法transfer中出现异常，那么张三用户将白白丢失100块钱	
+5.spring管理事务的方式：
+	1。编码式（了解）
+	2.xml配置（aop）	掌握
+	3.注解配置（aop）	掌握						
+	当前工程只介绍第一种。
+	1.编码式（了解）
+		1》将核心事务管理器配置到spring	
+			application.xml
+				<!-- 事务的核心管理器，封装了所有实务操作，依赖于连接池 -->
+				<bean name="transactionManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+					<property name="dataSource" ref="dataSource"></property>
+				</bean>
+				<!-- 事务模板对象 -->
+				<bean name="transactionTemplate" class="org.springframework.transaction.support.TransactionTemplate">
+					<property name="transactionManager" ref="transactionManager"></property>
+				</bean>		
+				
+		2>修改AccountServiceImpl的transfer方法，将代码放入doInTransactionWithoutResult方法中
+					
+					tt.execute(new TransactionCallbackWithoutResult() {
+			
+							@Override
+							protected void doInTransactionWithoutResult(TransactionStatus arg0) {
+								//减钱
+								ad.decreaseMoney(from, money);
+							
+								//模拟异常
+					//			int i=1/0;
+								
+								//加钱
+								ad.increaseMoney(to, money);
+						}	
+		3》如果业务方法里面有n多方法，那么把每个方法都放入execute中势必变得冗余麻烦。	
+	2.xml注解配置aop
+	
+		1》导包：aop aspect aop联盟  weaving
+		2》导入新的约束 tx
+			beans:最基本
+			context：读取properties配置文件
+			aop：配置aop
+			tx：配置事务通知
+		3》配置通知并织入.
